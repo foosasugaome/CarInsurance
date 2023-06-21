@@ -6,7 +6,9 @@ using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.UI;
 using CarInsurance.Models;
+using Microsoft.Ajax.Utilities;
 
 namespace CarInsurance.Controllers
 {
@@ -50,12 +52,82 @@ namespace CarInsurance.Controllers
         {
             if (ModelState.IsValid)
             {
+                // Define base quote
+                double baseQuote = 50;
+                double quote = CalculateQuote(baseQuote, GetAge(insuree), insuree);
+
+                insuree.Quote = Convert.ToDecimal(quote);
                 db.Insurees.Add(insuree);
                 db.SaveChanges();
                 return RedirectToAction("Index");
             }
 
             return View(insuree);
+        }
+
+        // Private function to calculate age.
+        private int GetAge(Insuree birthDay)
+        {
+            DateTime currentDate = DateTime.Now;
+            DateTime birthDate = new DateTime(birthDay.DateOfBirth.Year, birthDay.DateOfBirth.Month, birthDay.DateOfBirth.Day);
+            int age = currentDate.Year - birthDate.Year;
+            // Check if the birth date hasn't occurred yet this year
+            if (currentDate.Month < birthDate.Month || (currentDate.Month == birthDate.Month && currentDate.Day < birthDate.Day))
+            {
+                age--;
+            }
+            return age;
+        }
+
+        // Calculate quote
+        private double CalculateQuote(double baseQuote, int age, Insuree insuree)
+        {
+            double quote = baseQuote;
+            
+            // Calculate quote based on age
+            if (age < 18)
+            {
+                quote += 100;
+            } else if (age >= 19 && age <= 25) // ages 19  - 25
+            {
+                quote += 50;
+            } else // 26 and older
+            {
+                quote += 25;
+            }
+
+            if (insuree.CarYear  < 2000 || insuree.CarYear > 2015)
+            {
+                quote += 25;
+            }
+
+            //  Check if Make and Model is Porsche 911 Carrera.
+            if (insuree.CarMake.ToLower().Trim() == "porsche")
+            {
+                quote += 25;
+                if (insuree.CarModel.ToLower().Trim() ==  "911 carrera")
+                {
+                    quote += 25;
+                }
+            }
+
+            // Add $10 for every speeding ticket.
+            var speedingTicketQuote = insuree.SpeedingTickets * 10;
+            quote += speedingTicketQuote;
+            
+            //  25%  to total if there is DUI citation.
+            if (insuree.DUI)
+            {
+                quote *= 1.25;
+            }
+
+            // add  50% to  total if full coverage
+            if  (insuree.CoverageType)
+            {
+                quote *= 1.5;
+            }
+
+            return quote;
         }
 
         // GET: Insuree/Edit/5
